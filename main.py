@@ -44,9 +44,6 @@ class MainWindow(window.RootWindow):
             login_window.password.insert(0, sys.argv[2])
             login_window.buttons[0].invoke()
 
-    def create_user(self, data):
-        user = user.User(self, self._db, data)
-
 
 def run():
     root = MainWindow()

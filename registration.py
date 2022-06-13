@@ -18,8 +18,6 @@ class Registration(window.Window2):
         self._create_widgets()
 
     def _create_widgets(self):
-        logo.get_label(self).pack()
-
         frame = _ttk.Frame(self)
         frame.pack(expand=True)
         fields = ["Логин", "Пароль", "ФИО", "Телефон", "Паспорт"]

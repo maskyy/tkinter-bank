@@ -65,12 +65,6 @@ CREATE TABLE IF NOT EXISTS transactions (
     FOREIGN KEY(source_currency) REFERENCES currencies(name) ON DELETE CASCADE,
     FOREIGN KEY(target_currency) REFERENCES currencies(name) ON DELETE CASCADE
 ) STRICT;
-
-CREATE TABLE IF NOT EXISTS logins (
-    login TEXT PRIMARY KEY,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT "cashier"
-) STRICT;
 """
 
 _exit_script = """
@@ -101,17 +95,17 @@ class Database:
         return self._cur.execute(*args)
 
     def get_columns(self, table):
-        self._cur.execute("SELECT name FROM PRAGMA_TABLE_INFO('%s')" % table)
+        self.execute("SELECT name FROM PRAGMA_TABLE_INFO('%s')" % table)
         return [name[0] for name in self._cur.fetchall()]
 
     def get_user(self, login):
-        self._cur.execute("SELECT * FROM users WHERE login = ?", (login,))
+        self.execute("SELECT * FROM users WHERE login = ?", (login,))
         return self._cur.fetchone()
 
     def register_user(self, login, password, full_name, phone, passport):
         try:
             password = _login.hash_pwd(password)
-            self._cur.execute(
+            self.execute(
                 "INSERT INTO users VALUES (NULL, ?, ?, ?, ?, ?, CURRENT_DATE, 0)",
                 (login, password, full_name, phone, passport),
             )
@@ -121,8 +115,6 @@ class Database:
             print(e)
             return False
 
-    def change_user_password(self, login, new_password):
-        self._cur.execute(
-            "UPDATE logins SET password = ? WHERE login = ?", (new_password, login)
-        )
-        self.save()
+    def get_accounts(self, user):
+        self.execute("SELECT * FROM accounts WHERE owner_id = ?", (user,))
+        return self._cur.fetchall()

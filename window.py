@@ -1,5 +1,6 @@
 import tkinter as _tk
 
+import logo as _logo
 import util as _util
 
 __all__ = ["RootWindow", "Window", "Window2"]
@@ -27,6 +28,7 @@ class Window2(_tk.Toplevel):
     def __init__(self, master, title=None):
         super().__init__(master)
         self.master.withdraw()
+        _logo.get_label(self).pack()
         _util.set_close_handler(self, self.close)
         _init_window(self, title)
 
