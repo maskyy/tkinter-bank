@@ -1,7 +1,7 @@
 import datetime as _dt
 
-# _date_format = "%Y-%m-%d %H:%M"
-_date_format = "%d.%m.%Y %H:%M"
+_date_format = "%Y-%m-%d %H:%M"
+# _date_format = "%d.%m.%Y %H:%M"
 
 
 def to_date(s):

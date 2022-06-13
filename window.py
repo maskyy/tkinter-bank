@@ -1,6 +1,8 @@
 import tkinter as _tk
 
-__all__ = ["RootWindow", "Window"]
+import util as _util
+
+__all__ = ["RootWindow", "Window", "Window2"]
 
 
 def _init_window(win, title):
@@ -19,3 +21,15 @@ class Window(_tk.Toplevel):
     def __init__(self, title=None):
         super().__init__()
         _init_window(self, title)
+
+
+class Window2(_tk.Toplevel):
+    def __init__(self, master, title=None):
+        super().__init__(master)
+        self.master.withdraw()
+        _util.set_close_handler(self, self.close)
+        _init_window(self, title)
+
+    def close(self):
+        self.master.deiconify()
+        self.destroy()

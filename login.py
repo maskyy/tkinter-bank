@@ -24,11 +24,11 @@ class Login(_ttk.Frame):
         if user_data is None:
             return util.show_error("Логин не существует")
 
-        password2, role = user_data
+        password2 = user_data[2]
         if hash_pwd(password) != password2:
             return util.show_error("Неверный пароль")
 
-        handler(role)
+        handler(user_data)
         login_entry.delete(0, "end")
         password_entry.delete(0, "end")
         return True
@@ -49,8 +49,7 @@ class Login(_ttk.Frame):
         self.buttons = []
         for name, action in actions:
             if name == "Войти":
-                action = lambda d, l, p: Login.check_credentials(d, l, p, action)
-                func = _ft.partial(action, db, login, password)
+                func = _ft.partial(Login.check_credentials, db, login, password, action)
             else:
                 func = _ft.partial(action)
 

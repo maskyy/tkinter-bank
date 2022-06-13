@@ -1,5 +1,7 @@
 import sqlite3 as _sql
 
+import login as _login
+
 __all__ = ["Database"]
 
 _default_name = "files/bank.sqlite3"
@@ -16,9 +18,9 @@ CREATE TABLE IF NOT EXISTS users (
     login TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     full_name TEXT NOT NULL,
-    phone TEXT NOT NULL,
+    phone TEXT NOT NULL CHECK(length(phone) = 12),
     passport TEXT NOT NULL,
-    last_charged TEXT NOT NULL,
+    last_charged TEXT NOT NULL DEFAULT CURRENT_DATE,
     blocked INTEGER NOT NULL DEFAULT 0
 ) STRICT;
 
@@ -103,15 +105,21 @@ class Database:
         return [name[0] for name in self._cur.fetchall()]
 
     def get_user(self, login):
-        self._cur.execute("SELECT password FROM users WHERE login = ?", (login,))
+        self._cur.execute("SELECT * FROM users WHERE login = ?", (login,))
         return self._cur.fetchone()
 
     def register_user(self, login, password, full_name, phone, passport):
-        self._cur.execute(
-            "INSERT INTO users VALUES (NULL, ?, ?, ?, ?, ?, 0)",
-            (login, password, full_name, phone, passport),
-        )
-        self.save()
+        try:
+            password = _login.hash_pwd(password)
+            self._cur.execute(
+                "INSERT INTO users VALUES (NULL, ?, ?, ?, ?, ?, CURRENT_DATE, 0)",
+                (login, password, full_name, phone, passport),
+            )
+            self.save()
+            return True
+        except Exception as e:
+            print(e)
+            return False
 
     def change_user_password(self, login, new_password):
         self._cur.execute(

@@ -17,25 +17,22 @@ class MainWindow(window.RootWindow):
         logo.create_image()
         style.init_style()
         self._db = Database()
+
         self.create_widgets()
 
     def create_widgets(self):
-        logo.get_label(self).pack(pady=10)
-
-        check_credentials = lambda d, l, p: Login.check_credentials(
-            d, l, p, self.open_window
-        )
+        logo.get_label(self).pack()
 
         login_window = Login(
             self,
             [
-                # ("Зарегистрироваться", Login.register),
-                ("Войти", lambda: self._create_window(user.User)),
-                ("Регистрация", lambda: self._create_window(registration.Registration)),
+                ("Войти", lambda data: user.User(self, self._db, data)),
+                ("Регистрация", lambda: registration.Registration(db=self._db)),
                 ("Выход", self.destroy),
             ],
             self._db,
         )
+
         login_window.pack(expand=True)
         login_window.login.focus()
         login_window.password.bind(
@@ -47,14 +44,8 @@ class MainWindow(window.RootWindow):
             login_window.password.insert(0, sys.argv[2])
             login_window.buttons[0].invoke()
 
-    def _create_window(self, func):
-        win = func()
-        util.set_close_handler(win, lambda: self._close_handler(win))
-        self.withdraw()
-
-    def _close_handler(self, win):
-        win.destroy()
-        self.deiconify()
+    def create_user(self, data):
+        user = user.User(self, self._db, data)
 
 
 def run():
