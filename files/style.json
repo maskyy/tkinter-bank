@@ -19,5 +19,8 @@
     "Treeview.Heading": {
         "font": "Ubuntu 14 bold",
         "rowheight": 30
+    },
+    "TCombobox": {
+        "arrowsize": 16
     }
 }

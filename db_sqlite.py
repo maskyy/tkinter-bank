@@ -1,3 +1,4 @@
+import random as _rnd
 import sqlite3 as _sql
 
 import login as _login
@@ -118,3 +119,29 @@ class Database:
     def get_accounts(self, user):
         self.execute("SELECT * FROM accounts WHERE owner_id = ?", (user,))
         return self._cur.fetchall()
+
+    def add_account(self, owner, name, currency):
+        self.execute(
+            "INSERT INTO accounts VALUES (NULL, ?, ?, 0, ?)", (owner, name, currency)
+        )
+        self.save()
+
+    def add_card(self, owner, name, currency):
+        number = "220011113333" + str(_rnd.randint(10000, 19999))[1:]
+        name = "Карта " + name
+        self.add_account(owner, name, currency)
+        account = self.execute("SELECT last_insert_rowid()").fetchone()[0]
+        self.execute("INSERT INTO cards VALUES (?, ?)", (number, account))
+
+    def get_currency_symbol(self, currency):
+        self.execute("SELECT symbol FROM currencies WHERE name = ?", (currency,))
+        result = self._cur.fetchone()
+        return None if not result else result[0]
+
+    def sum_transactions(self, account_id):
+        self.execute(
+            "SELECT SUM(amount) FROM transactions WHERE source = ? OR target = ?",
+            (account_id, account_id),
+        )
+        result = self._cur.fetchone()
+        return 0 if result[0] is None else result[0]

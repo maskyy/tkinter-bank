@@ -16,6 +16,7 @@ class RootWindow(_tk.Tk):
     def __init__(self, title=None):
         super().__init__()
         _init_window(self, title)
+        self.option_add("*TCombobox*Listbox*Font", "Roboto 16")
 
 
 class Window(_tk.Toplevel):
