@@ -59,5 +59,5 @@ class Login(_ttk.Frame):
                 command=func,
                 width=17,
             )
-            btn.pack(pady=5)
+            btn.pack(pady=15)
             self.buttons.append(btn)

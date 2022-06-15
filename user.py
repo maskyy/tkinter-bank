@@ -46,7 +46,20 @@ class User(window.Window2):
         style.Button(self, text="Добавить", command=self._add_transaction).pack()
 
     def _add_transaction(self):
-        pass
+        entries = [self._source, self._target, self._amount]
+        source, target, amount = [e.get_strip() for e in entries]
+        if not source or not target or not amount:
+            return
+        try:
+            amount = float(amount)
+        except:
+            return
+
+        if self._db.make_transaction(source, target, amount):
+            util.show_info("Транзакция добавлена")
+        else:
+            util.show_error("Ошибка")
+        self._accounts.update_data()
 
     def _create_widgets(self):
         _ttk.Label(self, text=self._name).pack(pady=25)
@@ -57,6 +70,10 @@ class User(window.Window2):
 
         style.Button(self, text="Новый счёт/карта", command=self._new_account).pack(
             pady=25
+        )
+
+        style.Button(self, text="Выйти", command=self.close, width=15).pack(
+            pady=25, side="bottom"
         )
 
     def _update_accounts(self, master):
@@ -75,6 +92,13 @@ class User(window.Window2):
             cmd = _ft.partial(self._view_account, account)
             style.Button(master, text=text, command=cmd, width=20).pack(pady=5)
 
+    def _add_back_button(self, master, win=None):
+        if win is None:
+            win = master
+        style.Button(master, text="Назад", command=win.close, width=15).pack(
+            pady=25, side="bottom"
+        )
+
     def _new_account(self):
         self._window = win = window.Window2(self, "Новый счёт/карта")
 
@@ -82,12 +106,14 @@ class User(window.Window2):
             win,
             text="Счёт",
             command=lambda: self._toggle_type(self._account_btn, self._card_btn, False),
+            width=15,
         )
         self._account_btn.pack(pady=5)
         self._card_btn = style.Button(
             win,
             text="Карта",
             command=lambda: self._toggle_type(self._card_btn, self._account_btn, True),
+            width=15,
         )
         self._card_btn.pack(pady=5)
         self._is_card = None
@@ -105,8 +131,10 @@ class User(window.Window2):
         bottom = _ttk.Frame(win)
         bottom.pack(side="bottom")
 
-        style.Button(bottom, text="Открыть", command=self._add_account).pack(pady=5)
-        style.Button(bottom, text="Назад", command=win.close).pack(pady=5)
+        style.Button(bottom, text="Открыть", command=self._add_account, width=15).pack(
+            pady=5
+        )
+        self._add_back_button(bottom, win)
 
     def _toggle_type(self, disable, enable, state):
         disable.config(state="disabled")
@@ -147,10 +175,11 @@ class User(window.Window2):
         self._window = win = window.Window2(self, "Счёт")
 
         name, balance, currency = account_data[2:5]
-        currency = self._db.get_currency_symbol(currency)
-        text = "%.2f %s\n%s" % (balance, currency, name)
+        self._currency = currency
+        self._cur_sym = currency = self._db.get_currency_symbol(currency)
+        text = "%.2f %s\nID %d. %s" % (balance, currency, self._account_id, name)
         style.Button(win, text=text, state="disabled", width=20).pack(pady=25)
-        sum_ = self._db.sum_transactions(self._account_id)
+        sum_ = self._db.sum_transactions(self._account_id, self._currency)
         style.Button(
             win,
             text="Операции (%.2f %s)" % (sum_, currency),
@@ -162,16 +191,61 @@ class User(window.Window2):
             pady=15, ipady=5
         )
 
-        bottom = _ttk.Frame(win)
-        bottom.pack(side="bottom")
-
-        style.Button(bottom, text="Назад", command=win.close).pack(pady=5)
+        self._add_back_button(win)
 
     def _view_history(self):
         win = window.Window2(self._window, "История")
+        sum_ = self._db.sum_transactions(self._account_id, self._currency)
+        style.Button(
+            win,
+            text="Операции (%.2f %s)" % (sum_, self._cur_sym),
+            width=20,
+            state="disabled"
+        ).pack(pady=15, ipady=10)
+
+        columns = ["Дата", "Описание", "Сумма"]
+        history = tableview.TableView(win, self._db, "transactions", columns, row_func=self._format_transaction)
+        history.config(show="tree")
+        history.column("#1", width=75)
+        history.column("#2", width=180)
+        history.column("#3", width=45)
+        history.update_data()
+        self._reverse_rows(history)
+        history.pack(fill="x")
+
+        self._add_back_button(win)
+
+    def _format_transaction(self, row):
+        id_ = str(self._account_id)
+        if row[1] != id_ and row[2] != id_:
+            return None
+
+        date = dates.convert_format(row[-1])
+        if id_ == row[1]:
+            description = row[2] if not self._db.is_account(row[2]) else "Перевод\nна счёт %s" % row[2]
+        else:
+            description = row[1] if not self._db.is_account(row[1]) else "Перевод\nсо счёта %s" % row[1]
+
+        if row[4] != self._currency:
+            amount = self._db.convert_currency(float(row[3]), row[4], self._currency)
+        else:
+            amount = float(row[3])
+
+        if id_ == row[1]:
+            sum_ = "-" + str(amount)
+        else:
+            sum_ = "+" + str(amount)
+
+        return (date, description, sum_)
+
+    def _reverse_rows(self, tree):
+        for item in tree.get_children():
+            tree.move(item, "", 0)
 
     def _view_transfer(self):
         win = window.Window2(self._window, "Перевести")
+
+        self._add_back_button(win)
 
     def _filter_accounts(self, row):
         if row[1] == self._id:

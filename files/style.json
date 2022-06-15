@@ -13,11 +13,11 @@
         "font": "Ubuntu 18"
     },
     "Treeview": {
-        "font": "Roboto 14",
-        "rowheight": 30
+        "font": "Roboto 11",
+        "rowheight": 50
     },
     "Treeview.Heading": {
-        "font": "Ubuntu 14 bold",
+        "font": "Ubuntu 12 bold",
         "rowheight": 30
     },
     "TCombobox": {

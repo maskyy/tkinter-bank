@@ -1,3 +1,4 @@
+import math as _math
 import random as _rnd
 import sqlite3 as _sql
 
@@ -138,10 +139,86 @@ class Database:
         result = self._cur.fetchone()
         return None if not result else result[0]
 
-    def sum_transactions(self, account_id):
+    def sum_transactions(self, account_id, cur):
         self.execute(
-            "SELECT SUM(amount) FROM transactions WHERE source = ? OR target = ?",
+            "SELECT amount, source_currency FROM transactions WHERE source = ? OR target = ?",
             (account_id, account_id),
         )
+
+        result = 0
+        for row in self._cur.fetchall():
+            amount = float(row[0])
+            if row[1] != cur:
+                amount = self.convert_currency(amount, row[1], cur)
+            result += amount
+
+        return result
+
+    def get_transactions(self, account_id):
+        self.execute(
+            "SELECT * FROM transactions WHERE source = ? OR target = ?",
+            (account_id, account_id),
+        )
+        return self._cur.fetchall()
+
+    def convert_currency(self, amount, cur1, cur2):
+        self.execute(
+            "SELECT source, rate FROM exchange_rates WHERE (source = ? AND target = ?) OR (source = ? AND target = ?)",
+            (cur1, cur2, cur2, cur1),
+        )
+        data = self._cur.fetchone()
+        if not data:
+            print("Rate %s/%s not found!" % (cur1, cur2))
+            return None
+
+        source, rate = data
+        if source != cur1:
+            rate = 1 / rate
+
+        return _math.floor(amount * rate * 100) / 100
+
+    def make_transaction(self, source, target, amount):
+        self.execute("SELECT balance, currency FROM accounts WHERE id = ?", (source,))
+        data = self._cur.fetchone()
+        if not data:
+            source_balance, source_currency = None, "RUB"
+        else:
+            source_balance, source_currency = data
+
+        self.execute("SELECT balance, currency FROM accounts WHERE id = ?", (target,))
+        data = self._cur.fetchone()
+        if not data:
+            target_balance, target_currency = None, source_currency
+        else:
+            target_balance, target_currency = data
+
+        if source_balance is None and target_balance is None:
+            print("Error: specify either source or target")
+            return False
+
+        target_add = amount
+        if source_currency != target_currency:
+            target_add = self.convert_currency(amount, source_currency, target_currency)
+
+        if source_balance is not None:
+            self.execute(
+                "UPDATE accounts SET balance = balance - ? WHERE id = ?",
+                (amount, source),
+            )
+        if target_balance is not None:
+            self.execute(
+                "UPDATE accounts SET balance = balance + ? WHERE id = ?",
+                (target_add, target),
+            )
+
+        self.execute(
+            "INSERT INTO transactions VALUES (NULL, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+            (source, target, target_add, source_currency, target_currency),
+        )
+        self.save()
+        return True
+
+    def is_account(self, value):
+        self.execute("SELECT 1 FROM accounts WHERE id = ?", (value,))
         result = self._cur.fetchone()
-        return 0 if result[0] is None else result[0]
+        return False if not result else True
