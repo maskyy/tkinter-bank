@@ -17,6 +17,7 @@ class MainWindow(window.RootWindow):
         logo.create_image()
         style.init_style()
         self._db = Database()
+        self._db.check_charges()
 
         self.create_widgets()
 

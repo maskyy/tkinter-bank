@@ -16,6 +16,10 @@
         "font": "Roboto 11",
         "rowheight": 50
     },
+    "small.Treeview": {
+        "font": "Roboto 11",
+        "rowheight": 25
+    },
     "Treeview.Heading": {
         "font": "Ubuntu 12 bold",
         "rowheight": 30

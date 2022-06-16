@@ -28,7 +28,7 @@ class User(window.Window2):
     def _create_admin(self):
         columns = ["ID", "ID владельца", "Название", "Баланс", "Валюта"]
         self._accounts = tableview.TableView(self, self._db, "accounts", columns)
-        self._accounts.config(displaycolumns=["Название", "Баланс", "Валюта"])
+        self._accounts.config(displaycolumns=["Название", "Баланс", "Валюта"], style="small.Treeview")
         self._accounts.pack(fill="x")
         self._accounts.update_data()
 
@@ -76,6 +76,12 @@ class User(window.Window2):
         style.Button(self, text="Выйти", command=self.close, width=15).pack(
             pady=25, side="bottom"
         )
+
+        if self._blocked:
+            util.show_error(
+                "Вы заблокированы. Пожалуйста, пополните хотя бы один счёт до 250 руб."
+            )
+            self.close()
 
     def _update_accounts(self, master):
         for widget in list(master.children.values()):

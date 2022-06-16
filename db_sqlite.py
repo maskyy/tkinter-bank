@@ -2,6 +2,7 @@ import math as _math
 import random as _rnd
 import sqlite3 as _sql
 
+import dates as _dates
 import login as _login
 
 __all__ = ["Database"]
@@ -247,4 +248,38 @@ class Database:
         ).fetchone()
 
     def check_charges(self):
-        pass
+        now = _dates.to_date(_dates.now())
+        for user in self.get_table("users"):
+            last_charged = _dates.to_date(user[-2])
+            if last_charged.month < now.month:
+                self._charge_user(user)
+                print("do charge")
+
+    def _charge_user(self, user):
+        id_ = user[0]
+        accounts = self.get_accounts(id_)
+        if len(accounts) == 0:
+            print("No accounts found")
+            return
+
+        charged = False
+        for acc in accounts:
+            balance, currency = acc[3:]
+            converted_charge = self.convert_currency(
+                _charge_amount, _charge_currency, currency
+            )
+            if balance < converted_charge:
+                print("Not enough")
+                continue
+
+            self.make_transaction(acc[0], "Обслуживание", converted_charge)
+            charged = True
+            break
+
+        if not charged:
+            self.execute("UPDATE users SET blocked = 1 WHERE id = ?", (id_,))
+        else:
+            self.execute(
+                "UPDATE users SET blocked = 0, last_charged = CURRENT_DATE WHERE id = ?",
+                (id_,),
+            )
