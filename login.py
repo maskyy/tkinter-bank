@@ -1,7 +1,6 @@
 import enum as _enum
 import functools as _ft
 import hashlib as _hash
-import tkinter.messagebox as _msg
 import tkinter.ttk as _ttk
 
 import style

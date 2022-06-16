@@ -22,3 +22,11 @@ def center_window(win):
     x = (win.winfo_screenwidth() - w) // 2
     y = (win.winfo_screenheight() - h) // 2
     win.geometry("+%d+%d" % (x, y))
+
+
+def is_float(s):
+    try:
+        num = float(s)
+        return True
+    except:
+        return False

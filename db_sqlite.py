@@ -162,6 +162,9 @@ class Database:
         return self._cur.fetchall()
 
     def convert_currency(self, amount, cur1, cur2):
+        if cur1 == cur2:
+            return amount
+
         self.execute(
             "SELECT source, rate FROM exchange_rates WHERE (source = ? AND target = ?) OR (source = ? AND target = ?)",
             (cur1, cur2, cur2, cur1),
@@ -222,3 +225,13 @@ class Database:
         self.execute("SELECT 1 FROM accounts WHERE id = ?", (value,))
         result = self._cur.fetchone()
         return False if not result else True
+
+    def get_card_account(self, value):
+        self.execute("SELECT account FROM cards WHERE number = ?", (value,))
+        account = self._cur.fetchone()
+        return None if not account else account[0]
+
+    def get_card(self, account_id):
+        self.execute("SELECT number FROM cards WHERE account = ?", (account_id,))
+        result = self._cur.fetchone()
+        return None if not result else result[0]

@@ -1,5 +1,6 @@
 import functools as _ft
 import tkinter as _tk
+import tkinter.messagebox as _msg
 import tkinter.ttk as _ttk
 
 import dates
@@ -172,26 +173,40 @@ class User(window.Window2):
 
     def _view_account(self, account_data):
         self._account_id = account_data[0]
+        self._account_data = account_data
+        self._currency = account_data[4]
+        self._cur_sym = self._db.get_currency_symbol(self._currency)
+
         self._window = win = window.Window2(self, "Счёт")
 
-        name, balance, currency = account_data[2:5]
-        self._currency = currency
-        self._cur_sym = currency = self._db.get_currency_symbol(currency)
-        text = "%.2f %s\nID %d. %s" % (balance, currency, self._account_id, name)
-        style.Button(win, text=text, state="disabled", width=20).pack(pady=25)
-        sum_ = self._db.sum_transactions(self._account_id, self._currency)
-        style.Button(
-            win,
-            text="Операции (%.2f %s)" % (sum_, currency),
-            command=self._view_history,
-            width=20,
-        ).pack(pady=15, ipady=10)
+        win.card = style.Button(win, state="disabled", width=20)
+        win.card.pack(pady=25)
+        win.transactions = style.Button(win, command=self._view_history, width=20)
+        win.transactions.pack(pady=15, ipady=10)
+        self._update_account_buttons(win)
 
         style.Button(win, text="Перевести", command=self._view_transfer, width=15).pack(
             pady=15, ipady=5
         )
 
         self._add_back_button(win)
+
+    def _update_account_buttons(self, win):
+        account_data = (
+            self._account_data[3],
+            self._cur_sym,
+            self._account_id,
+            self._account_data[2],
+        )
+        account_text = "%.2f %s\n ID %d. %s" % account_data
+        card = self._db.get_card(self._account_id)
+        if card is not None:
+            account_text += "\n%s" % card
+        win.card.config(text=account_text)
+
+        sum_ = self._db.sum_transactions(self._account_id, self._currency)
+        sum_text = "Операции (%.2f %s)" % (sum_, self._cur_sym)
+        win.transactions.config(text=sum_text)
 
     def _view_history(self):
         win = window.Window2(self._window, "История")
@@ -200,11 +215,13 @@ class User(window.Window2):
             win,
             text="Операции (%.2f %s)" % (sum_, self._cur_sym),
             width=20,
-            state="disabled"
+            state="disabled",
         ).pack(pady=15, ipady=10)
 
         columns = ["Дата", "Описание", "Сумма"]
-        history = tableview.TableView(win, self._db, "transactions", columns, row_func=self._format_transaction)
+        history = tableview.TableView(
+            win, self._db, "transactions", columns, row_func=self._format_transaction
+        )
         history.config(show="tree")
         history.column("#1", width=75)
         history.column("#2", width=180)
@@ -222,9 +239,17 @@ class User(window.Window2):
 
         date = dates.convert_format(row[-1])
         if id_ == row[1]:
-            description = row[2] if not self._db.is_account(row[2]) else "Перевод\nна счёт %s" % row[2]
+            description = (
+                row[2]
+                if not self._db.is_account(row[2])
+                else "Перевод\nна счёт %s" % row[2]
+            )
         else:
-            description = row[1] if not self._db.is_account(row[1]) else "Перевод\nсо счёта %s" % row[1]
+            description = (
+                row[1]
+                if not self._db.is_account(row[1])
+                else "Перевод\nсо счёта %s" % row[1]
+            )
 
         if row[4] != self._currency:
             amount = self._db.convert_currency(float(row[3]), row[4], self._currency)
@@ -245,7 +270,60 @@ class User(window.Window2):
     def _view_transfer(self):
         win = window.Window2(self._window, "Перевести")
 
-        self._add_back_button(win)
+        text = "с %s\n%.2f %s" % (*self._account_data[2:4], self._cur_sym)
+        style.Button(win, text=text, state="disabled", width=20).pack(pady=25)
+
+        for account in self._db.get_accounts(self._id):
+            if account[0] == self._account_id:
+                continue
+            name, balance, currency = account[2:5]
+            currency = self._db.get_currency_symbol(currency)
+            text = "%.2f %s\n%s" % (balance, currency, name)
+            cmd = _ft.partial(self._select_account, account[0])
+            style.Button(win, text=text, command=cmd, width=20).pack(pady=5)
+
+        _ttk.Label(win, text="ID счёта / карта").pack(pady=5)
+        self._target_account = style.Entry(win)
+        self._target_account.pack(pady=5)
+
+        _ttk.Label(win, text="Сумма (%s)" % self._cur_sym).pack(pady=5)
+        self._target_amount = style.Entry(win)
+        self._target_amount.pack(pady=5)
+
+        bottom = _ttk.Frame(win)
+        bottom.pack(side="bottom")
+        style.Button(
+            bottom, text="Перевести", command=self._make_transfer, width=15
+        ).pack(pady=5)
+        self._add_back_button(bottom, win)
+
+    def _select_account(self, text):
+        self._target_account.delete(0, "end")
+        self._target_account.insert(0, text)
+
+    def _make_transfer(self):
+        target, amount = (
+            self._target_account.get_strip(),
+            self._target_amount.get_strip(),
+        )
+        if not target:
+            return util.show_error("Введите счёт или карту для перевода")
+        if not amount or not util.is_float(amount):
+            return util.show_error("Введите сумму для перевода")
+
+        card = self._db.get_card_account(target)
+        if card is not None:
+            target = card
+        elif not self._db.is_account(target):
+            return util.show_error("Счёт не найден")
+
+        amount = float(amount)
+        if amount < 0 or amount > self._account_data[3]:
+            return util.show_error("Введите сумму от 0 до %.2f" % self._account_data[3])
+
+        if not _msg.askyesno("Подтверждение", "Перевести?"):
+            return
+        print(target, amount)
 
     def _filter_accounts(self, row):
         if row[1] == self._id:
