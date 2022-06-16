@@ -7,6 +7,8 @@ import login as _login
 __all__ = ["Database"]
 
 _default_name = "files/bank.sqlite3"
+_charge_amount = 250
+_charge_currency = "RUB"
 
 _init_script = """
 PRAGMA encoding = "UTF-8";
@@ -235,3 +237,14 @@ class Database:
         self.execute("SELECT number FROM cards WHERE account = ?", (account_id,))
         result = self._cur.fetchone()
         return None if not result else result[0]
+
+    def get_account_data(self, id_):
+        return self.execute("SELECT * FROM accounts WHERE id = ?", (id_,)).fetchone()
+
+    def get_user_name(self, id_):
+        return self.execute(
+            "SELECT full_name FROM users WHERE id = ?", (id_,)
+        ).fetchone()
+
+    def check_charges(self):
+        pass

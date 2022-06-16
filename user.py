@@ -173,7 +173,7 @@ class User(window.Window2):
 
     def _view_account(self, account_data):
         self._account_id = account_data[0]
-        self._account_data = account_data
+        self._account_data = list(account_data)
         self._currency = account_data[4]
         self._cur_sym = self._db.get_currency_symbol(self._currency)
 
@@ -192,6 +192,8 @@ class User(window.Window2):
         self._add_back_button(win)
 
     def _update_account_buttons(self, win):
+        balance = self._db.get_account_data(self._account_id)[3]
+        self._account_data[3] = balance
         account_data = (
             self._account_data[3],
             self._cur_sym,
@@ -268,7 +270,7 @@ class User(window.Window2):
             tree.move(item, "", 0)
 
     def _view_transfer(self):
-        win = window.Window2(self._window, "Перевести")
+        self._transfer = win = window.Window2(self._window, "Перевести")
 
         text = "с %s\n%.2f %s" % (*self._account_data[2:4], self._cur_sym)
         style.Button(win, text=text, state="disabled", width=20).pack(pady=25)
@@ -321,9 +323,34 @@ class User(window.Window2):
         if amount < 0 or amount > self._account_data[3]:
             return util.show_error("Введите сумму от 0 до %.2f" % self._account_data[3])
 
-        if not _msg.askyesno("Подтверждение", "Перевести?"):
+        target_data = self._db.get_account_data(target)
+        converted_amount = None
+        if self._currency != target_data[4]:
+            converted_amount = self._db.convert_currency(
+                amount, self._currency, target_data[4]
+            )
+
+        confirm_text = "Перевести %.2f %s" % (amount, self._cur_sym)
+        if converted_amount is not None:
+            confirm_text += " (%.2f %s)" % (
+                converted_amount,
+                self._db.get_currency_symbol(target_data[4]),
+            )
+        confirm_text += " на счёт %s" % target
+        print(target_data)
+        if self._id != target_data[1]:
+            confirm_text += " (%s)" % self._db.get_user_name(target_data[1])
+
+        if not _msg.askyesno("Подтверждение", confirm_text + "?"):
             return
-        print(target, amount)
+
+        if self._db.make_transaction(self._account_id, target, amount):
+            util.show_info("Перевод выполнен")
+            self._update_accounts(self._accounts)
+            self._update_account_buttons(self._window)
+            self._transfer.close()
+        else:
+            util.show_error("Ошибка")
 
     def _filter_accounts(self, row):
         if row[1] == self._id:
