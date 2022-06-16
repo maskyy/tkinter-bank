@@ -253,13 +253,11 @@ class Database:
             last_charged = _dates.to_date(user[-2])
             if last_charged.month < now.month:
                 self._charge_user(user)
-                print("do charge")
 
     def _charge_user(self, user):
         id_ = user[0]
         accounts = self.get_accounts(id_)
         if len(accounts) == 0:
-            print("No accounts found")
             return
 
         charged = False
@@ -269,7 +267,6 @@ class Database:
                 _charge_amount, _charge_currency, currency
             )
             if balance < converted_charge:
-                print("Not enough")
                 continue
 
             self.make_transaction(acc[0], "Обслуживание", converted_charge)
